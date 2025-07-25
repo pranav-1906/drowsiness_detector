@@ -15,7 +15,7 @@ A real-time drowsiness detection system that uses facial landmarks to monitor ey
 
 ## 🖥️ Demo
 
-> Coming soon – add a screen recording or GIF of the detector in action.
+> https://www.linkedin.com/posts/pranav1906_python-computervision-opencv-activity-7354550161072627713-2XHX?utm_source=share&utm_medium=member_desktop&rcm=ACoAAFD5jKEBJZyynUi9l5jfTa35m9WBU4PLLJ0
 
 ---
 
