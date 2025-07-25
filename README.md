@@ -27,7 +27,7 @@ Install the required packages using:
 pip install opencv-python mediapipe numpy pygame
 ```
 
-##🚀 How to Run
+## 🚀 How to Run
 
 Clone the repository or download the files.
 
@@ -40,7 +40,7 @@ python eyes.py
 ```
 Allow webcam access. If the system detects your eyes are closed for too long, it will sound an alarm.
 
-##⚙️ How It Works
+## ⚙️ How It Works
 
 The system uses MediaPipe to detect specific facial landmarks around the eyes.
 
