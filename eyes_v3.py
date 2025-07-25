@@ -1,0 +1,101 @@
+import cv2
+import mediapipe as mp
+import numpy as np
+import pygame
+import csv
+
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.3, min_tracking_confidence=0.3)
+
+pygame.mixer.init()
+pygame.mixer.music.load("alarm.mp3")
+
+LEFT_EYE = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE = [362, 385, 387, 263, 373, 380]
+
+THRESHOLD = 0.23
+CLOSED_FRAMES = 15
+frame_counter = 0
+alarm_playing = False
+
+open_file = open("open_ear.csv", mode="a", newline='')
+closed_file = open("closed_ear.csv", mode="a", newline='')
+open_writer = csv.writer(open_file)
+closed_writer = csv.writer(closed_file)
+
+def eye_aspect_ratio(landmarks, eye_points, img_w, img_h):
+    eye = np.array([(landmarks[i].x * img_w, landmarks[i].y * img_h) for i in eye_points])
+    A = np.linalg.norm(eye[1] - eye[5])
+    B = np.linalg.norm(eye[2] - eye[4])
+    C = np.linalg.norm(eye[0] - eye[3])
+    ear = (A + B) / (2.0 * C)
+    return ear
+
+cap = cv2.VideoCapture(0)
+
+print("Press 'o' to save EAR for open eyes")
+print("Press 'c' to save EAR for closed eyes")
+print("Press 'q' to quit")
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    frame = cv2.flip(frame, 1)
+    if not ret:
+        break
+
+    h, w, _ = frame.shape
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_frame)
+
+    key = cv2.waitKey(1) & 0xFF
+
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            left_ear = eye_aspect_ratio(face_landmarks.landmark, LEFT_EYE, w, h)
+            right_ear = eye_aspect_ratio(face_landmarks.landmark, RIGHT_EYE, w, h)
+            avg_ear = (left_ear + right_ear) / 2.0
+
+            for point in LEFT_EYE + RIGHT_EYE:
+                x = int(face_landmarks.landmark[point].x * w)
+                y = int(face_landmarks.landmark[point].y * h)
+                cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
+
+            cv2.putText(frame, f"EAR: {avg_ear:.3f}", (20, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
+
+            if avg_ear < THRESHOLD:
+                frame_counter += 1
+                if frame_counter >= CLOSED_FRAMES and not alarm_playing:
+                    pygame.mixer.music.play(-1)
+                    alarm_playing = True
+            else:
+                frame_counter = 0
+                if alarm_playing:
+                    pygame.mixer.music.stop()
+                    alarm_playing = False
+
+            if alarm_playing:
+                warning = "DROWSY! WAKE UP!"
+                text_size = cv2.getTextSize(warning, cv2.FONT_HERSHEY_SIMPLEX, 2, 6)[0]
+                text_x = (w - text_size[0]) // 2
+                text_y = (h + text_size[1]) // 2
+                cv2.putText(frame, warning, (text_x, text_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 6)
+
+            if key == ord('o'):
+                open_writer.writerow([round(avg_ear, 4)])
+                print("Open EAR saved:", round(avg_ear, 4))
+            elif key == ord('c'):
+                closed_writer.writerow([round(avg_ear, 4)])
+                print("Closed EAR saved:", round(avg_ear, 4))
+
+    cv2.imshow("Drowsiness Detector", frame)
+
+    if key == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+pygame.mixer.quit()
+open_file.close()
+closed_file.close()
